@@ -2,6 +2,9 @@ from machine import ADC
 from time import sleep
 from picozero import PWMLED, Speaker, Button
 from random import random
+
+#I want to preface this by saying that I know that the code is probably insanely unoptimized, but it works
+
 blue_button = Button(16)
 green_button = Button(17)
 yellow_button = Button(0)
@@ -15,11 +18,32 @@ sequence = []
 sleep_time = 1
 player = []
 sound = False
+gamePlaying = False
 num = random()
+
 if num > .5:
     sound = True
     
 BEAT = .25
+
+
+def ScalePercent(volt):
+    percent = (volt/3.3)*100
+    return int(percent)
+
+def ReadPotentiometer():
+    adcpin = 26
+    pot = ADC(adcpin)
+    
+    adc_value = pot.read_u16()
+    volt = (3.3/65535)*adc_value
+    
+    percentPot = ScalePercent(volt)
+    
+    return percentPot
+
+
+br = ReadPotentiometer() / 100
 
 song = [ ['d5', BEAT / 2], ['d#5', BEAT / 2], ['f5', BEAT], ['d6', BEAT], ['a#5', BEAT], ['d5', BEAT],  
               ['f5', BEAT], ['d#5', BEAT], ['d#5', BEAT], ['c5', BEAT / 2],['d5', BEAT / 2], ['d#5', BEAT], 
@@ -36,42 +60,58 @@ if sound == True:
 else:
     sleep(2)
 def buttonHandlerBlue():
+    if gamePlaying:
+        return
+    blue.on(br)
     player.append(1)
     sleep(.05)
+    blue.off()
     print(player)
 def buttonHandlerGreen():
+    if gamePlaying:
+        return
+    green.on(br)
     player.append(2)
     sleep(.05)
+    green.off()
 def buttonHandlerYellow():
+    if gamePlaying:
+        return
     player.append(3)
+    yellow.on(br)
     sleep(.05)
+    yellow.off()
 def buttonHandlerWhite():
+    if gamePlaying:
+        return
+    white.on(br/8)
     player.append(4)
     sleep(.05)
+    white.off()
 blue_button.when_pressed = buttonHandlerBlue
 green_button.when_pressed = buttonHandlerGreen
 white_button.when_pressed = buttonHandlerWhite
 yellow_button.when_pressed = buttonHandlerYellow
 
 def lightShow():
-    blue.on()
+    blue.on(br)
     sleep(.05)
     blue.off()
-    green.on()
+    green.on(br)
     sleep(.05)
     green.off()
-    white.on()
+    white.on(br/8)
     sleep(.05)
     white.off()
-    yellow.on()
+    yellow.on(br)
     sleep(.05)
     yellow.off()
     sleep(.05)
     for i in range(5):
-        blue.on()
-        white.on()
-        green.on()
-        yellow.on()
+        blue.on(br)
+        white.on(br/8)
+        green.on(br)
+        yellow.on(br)
         sleep(.1)
         blue.off()
         white.off()
@@ -98,25 +138,13 @@ def playWinningSound():
     speaker.play('g4', 0.2)
     
 
-def ReadPotentiometer():
-    adcpin = 27
-    pot = ADC(adcpin)
-    
-    adc_value = pot.read_u16()
-    volt = (3.3/65535)*adc_value
-    
-    percentPot = ScalePercent(volt)
-    
-    return percentPot
 
-def ScalePercent(volt):
-    percent = (volt/3.3)*100
-    return int(percent)
 
 
 
 while True:
     for color in sequence:
+        gamePlaying = True
         br = ReadPotentiometer() / 100
         if color == 1:
             blue.on(br)
@@ -134,10 +162,11 @@ while True:
             yellow.off()
             sleep(.05)
         elif color == 4:
-            white.on(br)
+            white.on(br/4)
             sleep(sleep_time)
             white.off()
             sleep(.05)
+    gamePlaying = False
     while True:
         if len(player) >= len(sequence):
             print('breaking')
@@ -156,6 +185,7 @@ while True:
     correct = player == sequence
     if correct:
         print('correct')
+        sleep(.5)
         ran = random()
         if sound == True:
             playWinningSound()
